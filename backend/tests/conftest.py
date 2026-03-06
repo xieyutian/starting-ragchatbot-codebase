@@ -1,23 +1,27 @@
 """
 Shared fixtures for RAG system tests.
 """
-import pytest
+
 import os
-import tempfile
-from unittest.mock import MagicMock, patch
-from dataclasses import dataclass
 
 # Add parent directory to path for imports
 import sys
+import tempfile
+from dataclasses import dataclass
+from unittest.mock import MagicMock
+
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from vector_store import VectorStore, SearchResults
-from models import Course, Lesson, CourseChunk
+from models import Course, CourseChunk, Lesson
+from vector_store import SearchResults, VectorStore
 
 
 @dataclass
 class TestConfig:
     """Test configuration with correct MAX_RESULTS"""
+
     ANTHROPIC_API_KEY: str = "test-api-key"
     ANTHROPIC_MODEL: str = "claude-sonnet-4-20250514"
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
@@ -44,12 +48,14 @@ def mock_vector_store():
     # Default search results
     mock_search_results = SearchResults(
         documents=["Test content about MCP protocol"],
-        metadata=[{
-            "course_title": "Introduction to MCP",
-            "lesson_number": 1,
-            "chunk_index": 0
-        }],
-        distances=[0.5]
+        metadata=[
+            {
+                "course_title": "Introduction to MCP",
+                "lesson_number": 1,
+                "chunk_index": 0,
+            }
+        ],
+        distances=[0.5],
     )
     mock_store.search.return_value = mock_search_results
     mock_store.get_lesson_link.return_value = "https://example.com/lesson/1"
@@ -84,15 +90,15 @@ def sample_course():
                 lesson_number=1,
                 title="What is MCP?",
                 content="MCP stands for Model Context Protocol...",
-                lesson_link="https://example.com/lesson/1"
+                lesson_link="https://example.com/lesson/1",
             ),
             Lesson(
                 lesson_number=2,
                 title="MCP Architecture",
                 content="The MCP architecture consists of...",
-                lesson_link="https://example.com/lesson/2"
-            )
-        ]
+                lesson_link="https://example.com/lesson/2",
+            ),
+        ],
     )
 
 
@@ -104,20 +110,20 @@ def sample_chunks():
             course_title="Introduction to MCP",
             lesson_number=1,
             chunk_index=0,
-            content="MCP stands for Model Context Protocol. It is a protocol for AI assistants."
+            content="MCP stands for Model Context Protocol. It is a protocol for AI assistants.",
         ),
         CourseChunk(
             course_title="Introduction to MCP",
             lesson_number=1,
             chunk_index=1,
-            content="The protocol enables standardized communication between AI models."
+            content="The protocol enables standardized communication between AI models.",
         ),
         CourseChunk(
             course_title="Introduction to MCP",
             lesson_number=2,
             chunk_index=0,
-            content="The MCP architecture consists of clients, servers, and hosts."
-        )
+            content="The MCP architecture consists of clients, servers, and hosts.",
+        ),
     ]
 
 
@@ -127,24 +133,28 @@ def sample_search_results():
     return SearchResults(
         documents=[
             "MCP stands for Model Context Protocol. It is a protocol for AI assistants.",
-            "The protocol enables standardized communication between AI models."
+            "The protocol enables standardized communication between AI models.",
         ],
         metadata=[
-            {"course_title": "Introduction to MCP", "lesson_number": 1, "chunk_index": 0},
-            {"course_title": "Introduction to MCP", "lesson_number": 1, "chunk_index": 1}
+            {
+                "course_title": "Introduction to MCP",
+                "lesson_number": 1,
+                "chunk_index": 0,
+            },
+            {
+                "course_title": "Introduction to MCP",
+                "lesson_number": 1,
+                "chunk_index": 1,
+            },
         ],
-        distances=[0.3, 0.4]
+        distances=[0.3, 0.4],
     )
 
 
 @pytest.fixture
 def empty_search_results():
     """Create empty SearchResults for testing"""
-    return SearchResults(
-        documents=[],
-        metadata=[],
-        distances=[]
-    )
+    return SearchResults(documents=[], metadata=[], distances=[])
 
 
 @pytest.fixture
@@ -154,5 +164,5 @@ def error_search_results():
         documents=[],
         metadata=[],
         distances=[],
-        error="No course found matching 'NonExistent'"
+        error="No course found matching 'NonExistent'",
     )

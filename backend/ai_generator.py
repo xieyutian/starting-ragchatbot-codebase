@@ -1,5 +1,7 @@
+from typing import Dict, List, Optional
+
 import anthropic
-from typing import List, Optional, Dict, Any
+
 
 class AIGenerator:
     """Handles interactions with Anthropic's Claude API for generating responses"""
@@ -38,16 +40,15 @@ Provide only the direct answer to what was asked.
         self.max_tool_rounds = max_tool_rounds
 
         # Pre-build base API parameters
-        self.base_params = {
-            "model": self.model,
-            "temperature": 0,
-            "max_tokens": 800
-        }
-    
-    def generate_response(self, query: str,
-                     conversation_history: Optional[str] = None,
-                     tools: Optional[List] = None,
-                     tool_manager=None) -> str:
+        self.base_params = {"model": self.model, "temperature": 0, "max_tokens": 800}
+
+    def generate_response(
+        self,
+        query: str,
+        conversation_history: Optional[str] = None,
+        tools: Optional[List] = None,
+        tool_manager=None,
+    ) -> str:
         """
         Generate AI response with optional tool usage and conversation context.
         Supports sequential tool calling up to max_tool_rounds.
@@ -79,7 +80,11 @@ Provide only the direct answer to what was asked.
         # Sequential tool calling loop
         round_count = 0
 
-        while response.stop_reason == "tool_use" and round_count < self.max_tool_rounds and tool_manager:
+        while (
+            response.stop_reason == "tool_use"
+            and round_count < self.max_tool_rounds
+            and tool_manager
+        ):
             # Execute tools and get results
             tool_results = self._execute_tools(response, tool_manager)
 
@@ -90,15 +95,16 @@ Provide only the direct answer to what was asked.
             # Next API call - include tools only if more rounds allowed
             include_tools = (round_count + 1) < self.max_tool_rounds
             api_params = self._build_api_params(
-                messages, system_content,
-                tools if include_tools else None
+                messages, system_content, tools if include_tools else None
             )
             response = self.client.messages.create(**api_params)
             round_count += 1
 
         return response.content[0].text
 
-    def _build_api_params(self, messages: List, system_content: str, tools: Optional[List] = None) -> Dict:
+    def _build_api_params(
+        self, messages: List, system_content: str, tools: Optional[List] = None
+    ) -> Dict:
         """
         Build API parameters dictionary.
 
@@ -113,7 +119,7 @@ Provide only the direct answer to what was asked.
         api_params = {
             **self.base_params,
             "messages": messages,
-            "system": system_content
+            "system": system_content,
         }
 
         if tools:
@@ -139,16 +145,17 @@ Provide only the direct answer to what was asked.
             if content_block.type == "tool_use":
                 try:
                     result = tool_manager.execute_tool(
-                        content_block.name,
-                        **content_block.input
+                        content_block.name, **content_block.input
                     )
                 except Exception as e:
                     result = f"Error executing {content_block.name}: {str(e)}"
 
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": content_block.id,
-                    "content": result
-                })
+                tool_results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": content_block.id,
+                        "content": result,
+                    }
+                )
 
         return tool_results
