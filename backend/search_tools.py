@@ -118,8 +118,8 @@ class CourseSearchTool(Tool):
 
             formatted.append(f"{header}\n{doc}")
 
-        # Store sources for retrieval
-        self.last_sources = sources
+        # Accumulate sources across multiple tool calls (for sequential tool calling)
+        self.last_sources.extend(sources)
 
         return "\n\n".join(formatted)
 
