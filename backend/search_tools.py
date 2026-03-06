@@ -1,6 +1,7 @@
-from typing import Dict, Any, Optional, Protocol
 from abc import ABC, abstractmethod
-from vector_store import VectorStore, SearchResults
+from typing import Any, Dict, Optional
+
+from vector_store import SearchResults, VectorStore
 
 
 class Tool(ABC):
@@ -34,22 +35,27 @@ class CourseSearchTool(Tool):
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "What to search for in the course content"
+                        "description": "What to search for in the course content",
                     },
                     "course_name": {
                         "type": "string",
-                        "description": "Course title (partial matches work, e.g. 'MCP', 'Introduction')"
+                        "description": "Course title (partial matches work, e.g. 'MCP', 'Introduction')",
                     },
                     "lesson_number": {
                         "type": "integer",
-                        "description": "Specific lesson number to search within (e.g. 1, 2, 3)"
-                    }
+                        "description": "Specific lesson number to search within (e.g. 1, 2, 3)",
+                    },
                 },
-                "required": ["query"]
-            }
+                "required": ["query"],
+            },
         }
 
-    def execute(self, query: str, course_name: Optional[str] = None, lesson_number: Optional[int] = None) -> str:
+    def execute(
+        self,
+        query: str,
+        course_name: Optional[str] = None,
+        lesson_number: Optional[int] = None,
+    ) -> str:
         """
         Execute the search tool with given parameters.
 
@@ -64,9 +70,7 @@ class CourseSearchTool(Tool):
 
         # Use the vector store's unified search interface
         results = self.store.search(
-            query=query,
-            course_name=course_name,
-            lesson_number=lesson_number
+            query=query, course_name=course_name, lesson_number=lesson_number
         )
 
         # Handle errors
@@ -91,8 +95,8 @@ class CourseSearchTool(Tool):
         sources = []  # Track sources for the UI
 
         for doc, meta in zip(results.documents, results.metadata):
-            course_title = meta.get('course_title', 'unknown')
-            lesson_num = meta.get('lesson_number')
+            course_title = meta.get("course_title", "unknown")
+            lesson_num = meta.get("lesson_number")
 
             # Build context header
             header = f"[{course_title}"
@@ -102,17 +106,21 @@ class CourseSearchTool(Tool):
 
             # Track source for the UI with link info
             source_info = {
-                'course_title': course_title,
-                'lesson_number': lesson_num,
-                'source_display': f"{course_title}"
+                "course_title": course_title,
+                "lesson_number": lesson_num,
+                "source_display": f"{course_title}",
             }
             if lesson_num is not None:
-                source_info['source_display'] += f" - Lesson {lesson_num}"
+                source_info["source_display"] += f" - Lesson {lesson_num}"
 
             # Get lesson link if available
-            lesson_link = self.store.get_lesson_link(course_title, lesson_num) if lesson_num is not None else None
+            lesson_link = (
+                self.store.get_lesson_link(course_title, lesson_num)
+                if lesson_num is not None
+                else None
+            )
             if lesson_link:
-                source_info['lesson_link'] = lesson_link
+                source_info["lesson_link"] = lesson_link
 
             sources.append(source_info)
 
@@ -140,11 +148,11 @@ class CourseOutlineTool(Tool):
                 "properties": {
                     "course_title": {
                         "type": "string",
-                        "description": "Exact course title to retrieve outline for"
+                        "description": "Exact course title to retrieve outline for",
                     }
                 },
-                "required": ["course_title"]
-            }
+                "required": ["course_title"],
+            },
         }
 
     def execute(self, course_title: str) -> str:
@@ -157,7 +165,6 @@ class CourseOutlineTool(Tool):
         Returns:
             Formatted course outline with course info and lessons or error message
         """
-        import json
 
         # Get all courses metadata
         all_courses_metadata = self.store.get_all_courses_metadata()
@@ -165,7 +172,7 @@ class CourseOutlineTool(Tool):
         # Find the course that matches the title (case-insensitive partial match)
         matched_course = None
         for course_meta in all_courses_metadata:
-            if course_title.lower() in course_meta['title'].lower():
+            if course_title.lower() in course_meta["title"].lower():
                 matched_course = course_meta
                 break
 
@@ -175,17 +182,21 @@ class CourseOutlineTool(Tool):
         # Build course outline response
         course_outline = []
         course_outline.append(f"Course Title: {matched_course['title']}")
-        course_outline.append(f"Course Link: {matched_course.get('course_link', 'Not available')}")
-        course_outline.append(f"Course Instructor: {matched_course.get('instructor', 'Not specified')}")
+        course_outline.append(
+            f"Course Link: {matched_course.get('course_link', 'Not available')}"
+        )
+        course_outline.append(
+            f"Course Instructor: {matched_course.get('instructor', 'Not specified')}"
+        )
         course_outline.append(f"Total Lessons: {matched_course.get('lesson_count', 0)}")
         course_outline.append("\nLessons:")
 
-        lessons = matched_course.get('lessons', [])
+        lessons = matched_course.get("lessons", [])
         if lessons:
             for lesson in lessons:
-                lesson_num = lesson.get('lesson_number', 'Unknown')
-                lesson_title = lesson.get('lesson_title', 'Untitled')
-                lesson_link = lesson.get('lesson_link', 'No link')
+                lesson_num = lesson.get("lesson_number", "Unknown")
+                lesson_title = lesson.get("lesson_title", "Untitled")
+                lesson_link = lesson.get("lesson_link", "No link")
 
                 course_outline.append(f"  - Lesson {lesson_num}: {lesson_title}")
                 course_outline.append(f"    Link: {lesson_link}")
@@ -209,7 +220,6 @@ class ToolManager:
             raise ValueError("Tool must have a 'name' in its definition")
         self.tools[tool_name] = tool
 
-
     def get_tool_definitions(self) -> list:
         """Get all tool definitions for Anthropic tool calling"""
         return [tool.get_tool_definition() for tool in self.tools.values()]
@@ -225,12 +235,12 @@ class ToolManager:
         """Get sources from the last search operation"""
         # Check all tools for last_sources attribute
         for tool in self.tools.values():
-            if hasattr(tool, 'last_sources') and tool.last_sources:
+            if hasattr(tool, "last_sources") and tool.last_sources:
                 return tool.last_sources
         return []
 
     def reset_sources(self):
         """Reset sources from all tools that track sources"""
         for tool in self.tools.values():
-            if hasattr(tool, 'last_sources'):
+            if hasattr(tool, "last_sources"):
                 tool.last_sources = []
